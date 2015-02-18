@@ -112,7 +112,10 @@ class Daemon(DaemonInterface):
 
         self.process = None
 
-        self.get_stdout, self.get_stderr = utils.get_std(stdout, stderr, cmd_prefix)
+        get_stdout, get_stderr = utils.get_std(stdout, stderr, cmd_prefix)
+
+        self.stdout = get_stdout()
+        self.stderr = get_stderr()
 
         self.begin()
 
@@ -146,8 +149,8 @@ class Daemon(DaemonInterface):
 
         self.process = psutil.Popen(
             self.cmd if not self.cmd_prefix else self.cmd_prefix + self.cmd,
-            stderr=self.get_stderr(),
-            stdout=self.get_stdout(),
+            stderr=self.stderr,
+            stdout=self.stdout,
             **self.process_options
         )
 
@@ -166,10 +169,11 @@ class Daemon(DaemonInterface):
 
         utils.process_terminate_by_pid_file(self.pid_file)
 
-        if self.cmd_prefix:
-            self.process.communicate()
-
         utils.safe_shot_down(self.process)
+
+        if self.cmd_prefix:
+            self.stdout.flush()
+            self.stderr.flush()
 
         self.pid_file.remove()
 
