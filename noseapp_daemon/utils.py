@@ -39,9 +39,9 @@ def get_std(stdout, stderr, cmd_prefix):
     return lambda: None, lambda: None
 
 
-def process_terminate(process):
+def safe_shot_down(process):
     """
-    Рекурсивное завершение процесса и всех потомков
+    Безопастно тушит процесс и всех потомков
 
     :type process: psutil.Popen
     """
@@ -49,7 +49,7 @@ def process_terminate(process):
 
         try:
             children = (c for c in process.children(recursive=True))
-            map(process_terminate, children)
+            map(safe_shot_down, children)
         except AttributeError:
             pass
 
