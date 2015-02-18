@@ -164,14 +164,14 @@ class Daemon(DaemonInterface):
 
         self.before_stop()
 
+        if self.cmd_prefix:
+            self.process.communicate()
+
         utils.process_terminate_by_pid_file(self.pid_file)
 
         utils.safe_shot_down(self.process)
 
         self.pid_file.remove()
-
-        if self.cmd_prefix:
-            self.process.communicate()
 
         self.process = None
 
