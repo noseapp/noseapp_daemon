@@ -107,9 +107,6 @@ class Daemon(DaemonInterface):
 
         if cmd_prefix:
             self.cmd_prefix = [c.strip() for c in cmd_prefix.split(' ')]
-
-            file(stdout, 'w').close()
-            file(stderr, 'w').close()
         else:
             self.cmd_prefix = None
 
@@ -150,8 +147,8 @@ class Daemon(DaemonInterface):
 
         self.process = psutil.Popen(
             self.cmd if not self.cmd_prefix else self.cmd_prefix + self.cmd,
-            stderr=open(self.stderr, 'a') if self.cmd_prefix else None,
-            stdout=open(self.stdout, 'a') if self.cmd_prefix else None,
+            stderr=open(self.stderr, 'ab') if self.cmd_prefix else None,
+            stdout=open(self.stdout, 'ab') if self.cmd_prefix else None,
             **self.process_options
         )
 
