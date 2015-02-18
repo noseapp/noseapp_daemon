@@ -170,6 +170,9 @@ class Daemon(DaemonInterface):
 
         self.pid_file.remove()
 
+        if self.cmd_prefix:
+            self.process.communicate()
+
         self.process = None
 
         self.after_stop()
