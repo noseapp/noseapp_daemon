@@ -28,7 +28,13 @@ def get_std(stdout, stderr, cmd_prefix):
     :param cmd_prefix: префикс для запуска демона
     """
     if stdout and stderr and cmd_prefix:
-        return lambda: open(stdout, 'w'), lambda: open(stderr, 'w')
+        if not os.path.isfile(stdout):
+            file(stdout, 'w').close()
+
+        if not os.path.isfile(stderr):
+            file(stderr, 'w').close()
+
+        return lambda: open(stdout, 'a'), lambda: open(stderr, 'a')
 
     return lambda: None, lambda: None
 
