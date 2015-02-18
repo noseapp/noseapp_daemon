@@ -18,27 +18,6 @@ TIMEOUT = 3.0
 WAIT_SLEEP = 1.0
 
 
-def get_std(stdout, stderr, cmd_prefix):
-    """
-    Возвращает lambda функции для настройки
-    stderr и stdout в subprocess.Popen
-
-    :param stdout: путь до файла stdout
-    :param stderr: путь до файла stderr
-    :param cmd_prefix: префикс для запуска демона
-    """
-    if stdout and stderr and cmd_prefix:
-        if not os.path.isfile(stdout):
-            file(stdout, 'w').close()
-
-        if not os.path.isfile(stderr):
-            file(stderr, 'w').close()
-
-        return lambda: open(stdout, 'a'), lambda: open(stderr, 'a')
-
-    return lambda: None, lambda: None
-
-
 def safe_shot_down(process):
     """
     Безопастно тушит процесс и всех потомков
