@@ -164,6 +164,7 @@ class Daemon(DaemonInterface):
 
         self.before_stop()
 
+        utils.process_terminate_by_pid_file(self.pid_file)
         utils.process_terminate(self.process)
 
         self.pid_file.remove()

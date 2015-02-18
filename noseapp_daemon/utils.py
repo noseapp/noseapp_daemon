@@ -2,6 +2,7 @@
 
 import os
 import errno
+import signal
 import logging
 
 import psutil
@@ -64,6 +65,21 @@ def process_terminate(process):
             process.kill()
 
     except (psutil.NoSuchProcess, OSError):
+        pass
+
+
+def process_terminate_by_pid_file(pid_file):
+    """
+    Завершить процесс по pid файлу
+
+    :type pid_file: PidFileObject
+    """
+    if not pid_file.exist:
+        return
+
+    try:
+        os.kill(pid_file.pid, signal.SIGTERM)
+    except OSError:
         pass
 
 
