@@ -169,17 +169,18 @@ class Daemon(DaemonInterface):
         utils.process_terminate_by_pid_file(self.pid_file)
 
         utils.safe_shot_down(self.process)
+        self.process.wait()
 
         self.pid_file.remove()
 
         if self.stdout:
             with open(self.stdout, 'a') as stdout:
-                for line in iter(self.process.stdout.readline, ''):
+                for line in self.process.stdout:
                     stdout.write(line)
 
         if self.stderr:
             with open(self.stderr, 'a') as stderr:
-                for line in iter(self.process.stderr.readline, ''):
+                for line in self.process.stderr:
                     stderr.write(line)
 
         self.process = None
