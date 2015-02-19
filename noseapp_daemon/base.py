@@ -148,8 +148,8 @@ class Daemon(DaemonInterface):
 
         self.process = psutil.Popen(
             self.cmd if not self.cmd_prefix else self.cmd_prefix + self.cmd,
-            stderr=PIPE if self.cmd_prefix and self.stderr else None,
-            stdout=PIPE if self.cmd_prefix and self.stdout else None,
+            stderr=PIPE,
+            stdout=PIPE,
             **self.process_options
         )
 
