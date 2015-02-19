@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from subprocess import PIPE
 
 import psutil
 
@@ -147,8 +148,8 @@ class Daemon(DaemonInterface):
 
         self.process = psutil.Popen(
             self.cmd if not self.cmd_prefix else self.cmd_prefix + self.cmd,
-            stderr=open(self.stderr, 'ab') if self.cmd_prefix else None,
-            stdout=open(self.stdout, 'ab') if self.cmd_prefix else None,
+            stderr=PIPE if self.cmd_prefix and self.stderr else None,
+            stdout=PIPE if self.cmd_prefix and self.stdout else None,
             **self.process_options
         )
 
@@ -170,6 +171,16 @@ class Daemon(DaemonInterface):
         utils.safe_shot_down(self.process)
 
         self.pid_file.remove()
+
+        if self.stdout:
+            with open(self.stdout, 'a') as stdout:
+                for line in iter(self.process.stdout.readline, ''):
+                    stdout.write(line)
+
+        if self.stderr:
+            with open(self.stderr, 'a') as stderr:
+                for line in iter(self.process.stderr.readline, ''):
+                    stderr.write(line)
 
         self.process = None
 
