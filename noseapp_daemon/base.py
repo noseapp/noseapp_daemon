@@ -139,6 +139,9 @@ class Daemon(DaemonInterface):
         """
         Стартует демона
         """
+        if not self.process and self.pid_file.exist:
+            self.pid_file.remove()
+
         if self.started:
             return
 

@@ -4,7 +4,7 @@ from noseapp_daemon.base import Daemon
 from noseapp_daemon.utils import PidFileObject
 
 
-__version__ = '0.0.0'
+__version__ = '0.0.1'
 
 
 __all__ = (
