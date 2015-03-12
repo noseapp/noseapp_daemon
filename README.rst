@@ -45,7 +45,10 @@ Create Service::
 
     def __init__(self, config, db):
       self._db = db
-      self._my_daemon = MyDaemon(config.MY_DAEMON_BIN, config_file=config.MY_DAEMON_CONFIG_PATH)
+      self._my_daemon = MyDaemon(
+        config.MY_DAEMON_BIN,
+        config_file=config.MY_DAEMON_CONFIG_PATH,
+      )
       self.prepare_db()
 
     def prepare_db(self):
