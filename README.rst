@@ -3,7 +3,7 @@
 Why?
 ====
 
-I testing daemon with noseapp lib and i wont have ability control for running, prepare... something else...
+I testing daemon with noseapp lib and i wont have ability control for daemon running, prepare... something else...
 
 
 ====
@@ -69,14 +69,16 @@ Management::
     def prepare(self):
         self.add_daemon(
           MyDaemon(
-            config.MY_DAEMON_BIN,
-            config_file=config.MY_DAEMON_CONFIG_PATH,
+            self._config.MY_DAEMON_BIN,
+            config_file=self._config.MY_DAEMON_CONFIG_PATH,
           ),
         )
 
         self.add_service(
           MyDaemonService(self._config, DBClient(...)),
         )
+
+     ...
 
   management = MyServiceManagement(config=app_config)
   management.start_all()
