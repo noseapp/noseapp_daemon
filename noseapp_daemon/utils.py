@@ -6,7 +6,6 @@ import signal
 import logging
 
 import psutil
-
 from noseapp.utils.common import waiting_for
 from noseapp.utils.common import TimeoutException
 
@@ -14,14 +13,8 @@ from noseapp.utils.common import TimeoutException
 logger = logging.getLogger(__name__)
 
 
-TIMEOUT = 3.0
-WAIT_SLEEP = 1.0
-
-
-def safe_shot_down(process):
+def safe_shot_down(process, timeout=3.0, sleep=1.0):
     """
-    Безопастно тушит процесс и всех потомков
-
     :type process: psutil.Popen
     """
     try:
@@ -37,8 +30,8 @@ def safe_shot_down(process):
         try:
             waiting_for(
                 process.poll,
-                timeout=TIMEOUT,
-                sleep=WAIT_SLEEP,
+                timeout=timeout,
+                sleep=sleep,
             )
         except TimeoutException:
             process.kill()
@@ -49,8 +42,6 @@ def safe_shot_down(process):
 
 def process_terminate_by_pid_file(pid_file):
     """
-    Завершить процесс по pid файлу
-
     :type pid_file: PidFileObject
     """
     if not pid_file.exist:
@@ -63,31 +54,31 @@ def process_terminate_by_pid_file(pid_file):
 
 
 class PidFileObject(object):
-    """
-    Класс реализует интерфейс для работы с pid файлом
-    """
 
     def __init__(self, file_path):
-        self.file_path = file_path
+        """
+        :param file_path: pid file path
+        """
+        self._file_path = file_path
 
     @property
     def exist(self):
         try:
-            return os.path.isfile(self.file_path)
+            return os.path.isfile(self._file_path)
         except TypeError:
             return False
 
     @property
     def path(self):
-        return self.file_path
+        return self._file_path
 
     @property
     def pid(self):
-        if not self.file_path:
+        if not self._file_path:
             return None
 
         try:
-            with open(self.file_path) as fp:
+            with open(self._file_path) as fp:
                 return int(fp.readline().strip())
         except IOError as e:
             if e.errno != errno.ENOENT:
@@ -100,9 +91,9 @@ class PidFileObject(object):
     def remove(self):
         if self.exist:
             try:
-                os.unlink(self.file_path)
+                os.unlink(self._file_path)
             except OSError:
                 pass
 
     def __repr__(self):
-        return '<PidFile {}>'.format(self.file_path)
+        return '<PidFile {}>'.format(self._file_path)

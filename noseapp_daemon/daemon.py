@@ -11,75 +11,58 @@ from noseapp_daemon import utils
 logger = logging.getLogger(__name__)
 
 
-class DaemonInterface(object):
+class _CallbackInterface(object):
     """
-    Интерфейс для управления демоном
+    Callback methods for daemon management
     """
-
-    @property
-    def name(self):
-        """
-        Имя демона
-        """
-        raise NotImplementedError(
-            'Property "name" should be implemented in subclasses.',
-        )
-
-    @property
-    def cmd(self):
-        """
-        cmd для запуска
-        """
-        raise NotImplementedError(
-            'Property "cmd" should be implemented in subclasses.',
-        )
 
     @property
     def process_options(self):
         """
-        Опции для subprocess.Popen
+        Arguments for Popen init
         """
         return {}
 
     def begin(self):
         """
-        Callback вызывается после инициализации класса
+        Be called after initialization
         """
         pass
 
     def finalize(self):
-         """
-        Callback вызывается перед удалением объекта
         """
+        Be called before delete instance
+        """
+        pass
 
     def before_start(self):
         """
-        Callback вызывается перед запуском
+        Pre start callback
         """
         pass
 
     def after_start(self):
         """
-        Callback вызывается после запуска
+        Post start callback
         """
         pass
 
     def before_stop(self):
         """
-        Callback вызывается перед остановкой
+        Pre stop callback
         """
         pass
 
     def after_stop(self):
         """
-        Callback вызывается после остановки
+        Post stop callback
         """
         pass
 
 
-class Daemon(DaemonInterface):
+class Daemon(_CallbackInterface):
     """
-    Базовый класс демона
+    Base class for daemon management from noseapp.NoseApp or ...
     """
 
     def __init__(self, daemon_bin,
@@ -89,22 +72,24 @@ class Daemon(DaemonInterface):
                  config_file=None,
                  cmd_prefix=None,
                  stdout=None,
-                 stderr=None):
+                 stderr=None,
+                 **kwargs):
         """
-        :param daemon_bin: путь до executable файла
-        :param working_dir: путь до рабочей дирректории
-        :param client: инстанс клиента
-        :param pid_file: путь до pid файла
-        :param config_file: путь до конфиг файла
-        :param cmd_prefix: префикс к cmd для запуска
-        :param stdout: путь до файла куда нужно писать stdout(работает только совместно с cmd_prefix)
-        :param stderr: путь до файла куда нужно писать stderr(работает только совместно с cmd_prefix)
+        :param daemon_bin: path to executable file
+        :param working_dir: cwd path
+        :param client: client for daemon
+        :param pid_file: path to pid file
+        :param config_file: path to config file
+        :param cmd_prefix: pre start command line prefix
+        :param stdout: path to stdout log file. with cmd_prefix only.
+        :param stderr:path to stderr log file. with cmd_prefix only.
         """
         self.daemon_bin = daemon_bin
         self.client = client
         self.pid_file = utils.PidFileObject(pid_file)
         self.config_file = config_file
         self.working_dir = working_dir or '.'
+        self.kwargs = kwargs
 
         if cmd_prefix:
             self.cmd_prefix = [c.strip() for c in cmd_prefix.split(' ')]
@@ -122,22 +107,28 @@ class Daemon(DaemonInterface):
         self.finalize()
 
     @property
+    def name(self):
+        raise NotImplementedError(
+            'Property "name" should be implemented in subclasses.',
+        )
+
+    @property
+    def cmd(self):
+        raise NotImplementedError(
+            'Property "cmd" should be implemented in subclasses.',
+        )
+
+    @property
     def started(self):
-        """
-        Флаг сигнализирует о том, что демон запущен
-        """
         return bool(self.process) or self.pid_file.exist
 
     @property
     def stopped(self):
-        """
-        Инверсия флага started
-        """
         return not self.started
 
     def start(self):
         """
-        Стартует демона
+        Start daemon
         """
         if not self.process and self.pid_file.exist:
             self.pid_file.remove()
@@ -160,7 +151,7 @@ class Daemon(DaemonInterface):
 
     def stop(self):
         """
-        Останавливает демона
+        Stop daemon
         """
         if self.stopped:
             return

@@ -6,10 +6,6 @@ from setuptools import find_packages
 import noseapp_daemon
 
 
-with open('requirements.txt') as fp:
-    requirements = [req.strip() for req in fp.readlines() if not req.startswith('--')]
-
-
 if __name__ == '__main__':
     setup(
         name='noseapp_daemon',
@@ -21,6 +17,8 @@ if __name__ == '__main__':
         description='daemon extension for noseapp lib',
         include_package_data=True,
         zip_safe=False,
-        platforms='any',
-        install_requires=requirements,
+        platforms='linux',
+        install_requires=[
+            'psutil==2.2.1',
+        ],
     )
