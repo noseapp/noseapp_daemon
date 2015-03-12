@@ -19,6 +19,7 @@ if __name__ == '__main__':
         zip_safe=False,
         platforms='linux',
         install_requires=[
+            'noseapp',
             'psutil==2.2.1',
         ],
     )
