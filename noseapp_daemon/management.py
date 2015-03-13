@@ -3,91 +3,110 @@
 from collections import OrderedDict
 from contextlib import contextmanager
 
-from noseapp_daemon.daemon import Daemon
+from noseapp_daemon.runner import DaemonRunner
 from noseapp_daemon.service import DaemonService
 
 
-class CheckoutError(BaseException):
+class ServiceNotFound(BaseException):
     pass
 
 
-class ServiceManagement(object):
+class DaemonNotFound(BaseException):
+    pass
+
+
+class DaemonManagement(object):
     """
     Interface for daemons and services control
 
     Example::
 
-      class Servant(DaemonsManagement):
+      class MyDaemonManagement(DaemonManagement):
 
-        def prepare(self):
+        def setup(self):
           # do something...
 
-      servant = Servant(config=app_config)
-      servant.add_daemon(daemon)
+      management = MyDaemonManagement(app)
+      management.add_daemon(daemon)
       ...
 
-      with servant.checkout_daemon('my_daemon') as my_daemon:
+      with management.checkout_daemon(
+        'my_daemon',
+        ignore_exc=(ValueError,),
+        callback=lambda: None,  # if ValueError will be raised, this function can be called
+      ) as my_daemon:
         my_daemon.start()
 
-      my_service = servant.service('my_service')
-      my_service.start()
+      management.service('my_service').start()
 
-      servant.stop_all()
+      management.stop_all()
 
-      servant.start_all()
-      servant.stop_daemons()
+      management.start_all()
+      management.stop_daemons()
+      ...
     """
 
-    def __init__(self, config=None):
-        self._config = config
+    def __init__(self, app=None, **options):
+        self._app = app
+        self._options = options
 
         self.__daemons = OrderedDict()
         self.__services = OrderedDict()
 
-        self.prepare()
+        self.setup()
 
-    def prepare(self):
+    def setup(self):
         pass
 
     def add_service(self, service):
         if not isinstance(service, DaemonService):
-            raise TypeError('service is not instance DaemonService')
+            raise TypeError('"service" param is not instance "DaemonService"')
 
         self.__services[service.name] = service
 
     def add_daemon(self, daemon):
-        if not isinstance(daemon, Daemon):
-            raise TypeError('daemon is not instance Daemon')
+        if not isinstance(daemon, DaemonRunner):
+            raise TypeError('"daemon" param is not instance "DaemonRunner"')
 
         self.__daemons[daemon.name] = daemon
 
     def daemon(self, name):
-        return self.__daemons.get(name)
-
-    def service(self, name):
-        return self.__services.get(name)
-
-    @contextmanager
-    def checkout_service(self, name):
-        try:
-            service = self.__services[name]
-        except KeyError as e:
-            raise CheckoutError(
-                'Service "{}" not found'.format(e.message),
-            )
-
-        yield service
-
-    @contextmanager
-    def checkout_daemon(self, name):
         try:
             daemon = self.__daemons[name]
-        except KeyError as e:
-            raise CheckoutError(
-                'Daemon "{}" not found'.format(e.message),
-            )
+        except KeyError:
+            raise DaemonNotFound(name)
 
-        yield daemon
+        return daemon
+
+    def service(self, name):
+        try:
+            service = self.__services[name]
+        except KeyError:
+            raise ServiceNotFound(name)
+
+        return service
+
+    @contextmanager
+    def checkout_service(self, name, ignore_exc=None, callback=None):
+        if isinstance(ignore_exc, tuple):
+            try:
+                yield self.service(name)
+            except ignore_exc:
+                if callable(callback):
+                    callback()
+        else:
+            yield self.service(name)
+
+    @contextmanager
+    def checkout_daemon(self, name, ignore_exc=None, callback=None):
+        if isinstance(ignore_exc, tuple):
+            try:
+                yield self.daemon(name)
+            except ignore_exc:
+                if callable(callback):
+                    callback()
+        else:
+            yield self.daemon(name)
 
     def start_services(self):
         for _, service in self.__services.items():

@@ -1,16 +1,25 @@
 
+============
+Installation
+============
+
+::
+
+  pip install noseapp_daemon
+
+
 ====
 Why?
 ====
 
-I testing daemon with noseapp lib and i wont have ability control for daemon running, prepare... something else...
+I testing linux daemon with noseapp lib and i wont have ability control for daemon running, prepare... something else...
 
 
 ====
 How?
 ====
 
-Create Daemon::
+Create Runner::
 
   from noseapp.ext.daemon import Daemon
 
@@ -23,7 +32,7 @@ Create Daemon::
       return [
         self.daemon_bin,
         '--config',
-        self.config_file,
+        self.options['config_file'],
       ]
 
     def before_start(self):
@@ -43,16 +52,15 @@ Create Service::
 
     name = 'my_daemon_service'
 
-    def __init__(self, config, db):
-      self._db = db
-      self._my_daemon = MyDaemon(
-        config.MY_DAEMON_BIN,
-        config_file=config.MY_DAEMON_CONFIG_PATH,
-      )
+    def setup(self):
       self.prepare_db()
+      self._my_daemon = MyDaemon(
+        self._config.MY_DAEMON_BIN,
+        config_file=self._config.MY_DAEMON_CONFIG_PATH,
+      )
 
     def prepare_db(self):
-      self._db ...
+      self._options['db'] ...
 
     def start(self):
       self._my_daemon.start()
@@ -60,34 +68,37 @@ Create Service::
     ...
 
 
-Management::
+Create Management::
 
-  from noseapp.ext.daemon import ServiceManagement
+  from noseapp.ext.daemon import DaemonManagement
 
-  class MyServiceManagement(ServiceManagement):
+  class MyDaemonManagement(DaemonManagement):
 
-    def prepare(self):
+    def setup(self):
         self.add_daemon(
           MyDaemon(
-            self._config.MY_DAEMON_BIN,
-            config_file=self._config.MY_DAEMON_CONFIG_PATH,
+            self._app.config.MY_DAEMON_BIN,
+            config_file=self._app.config.MY_DAEMON_CONFIG_PATH,
           ),
         )
 
         self.add_service(
-          MyDaemonService(self._config, DBClient(...)),
+          MyDaemonService(self._app.config, db=DBClient(...)),
         )
 
      ...
 
-  management = MyServiceManagement(config=app_config)
+  management = MyDaemonManagement(app)
   management.start_all()
 
-  with management.checkout_daemon('my_daemon') as my_daemon:
+  with management.checkout_daemon(
+    'my_daemon',
+    ignore_exc=(TypeError,),
+    callback=lambda: None,  # if ValueError will be raise, this function can be called
+  ) as my_daemon:
     my_daemon.stop()
 
-  my_daemon_service = management.service('my_daemon_service')
-  my_daemon_service.stop()
+  management.service('my_daemon_service').stop()
 
   # management.stop_all()
   # management.stop_daemons()

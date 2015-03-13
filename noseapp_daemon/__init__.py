@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from noseapp_daemon.daemon import Daemon
-from noseapp_daemon.utils import PidFileObject
 from noseapp_daemon.service import DaemonService
-from noseapp_daemon.management import ServiceManagement
-
-
-__version__ = '1.0.0'
+from noseapp_daemon.management import DaemonManagement
+from noseapp_daemon.runner import DaemonRunner as Daemon
 
 
 __all__ = (
     Daemon,
     DaemonService,
-    PidFileObject,
-    ServiceManagement,
+    DaemonManagement,
 )

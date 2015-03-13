@@ -3,14 +3,14 @@
 
 class DaemonService(object):
     """
-    Abstract layer for realization logic of daemon
+    Abstract layer for daemon run logic realization
 
     Example::
 
       class MyDaemonService(DaemonService):
 
-        def __init__(self...):
-          self._daemon = MyDaemon(...)
+        def setup(self):
+          self._daemon = MyDaemon(self._config...)
           # do something...
 
         # your interface for daemon management here
@@ -18,6 +18,15 @@ class DaemonService(object):
         def start():
           self._daemon.start()
     """
+
+    def __init__(self, config=None, **options):
+        self._config = config
+        self._options = options
+
+        self.setup()
+
+    def setup(self):
+        pass
 
     @property
     def name(self):

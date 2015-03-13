@@ -11,7 +11,7 @@ from noseapp_daemon import utils
 logger = logging.getLogger(__name__)
 
 
-class _CallbackInterface(object):
+class CallbackInterface(object):
     """
     Callback methods for daemon management
     """
@@ -19,19 +19,13 @@ class _CallbackInterface(object):
     @property
     def process_options(self):
         """
-        Arguments for Popen init
+        Arguments for Popen __init__ method
         """
         return {}
 
-    def begin(self):
+    def setup(self):
         """
         Be called after initialization
-        """
-        pass
-
-    def finalize(self):
-        """
-        Be called before delete instance
         """
         pass
 
@@ -60,51 +54,45 @@ class _CallbackInterface(object):
         pass
 
 
-class Daemon(_CallbackInterface):
+class DaemonRunner(CallbackInterface):
     """
-    Base class for daemon management from noseapp.NoseApp or ...
+    Base class for daemon run
     """
 
-    def __init__(self, daemon_bin,
-                 working_dir=None,
-                 client=None,
-                 pid_file=None,
-                 config_file=None,
-                 cmd_prefix=None,
+    def __init__(self,
+                 daemon_bin=None,
                  stdout=None,
                  stderr=None,
-                 **kwargs):
+                 pid_file=None,
+                 cmd_prefix=None,
+                 **options):
         """
         :param daemon_bin: path to executable file
-        :param working_dir: cwd path
-        :param client: client for daemon
+        :type daemon_bin: str
         :param pid_file: path to pid file
-        :param config_file: path to config file
+        :type pid_file: str
         :param cmd_prefix: pre start command line prefix
-        :param stdout: path to stdout log file. with cmd_prefix only.
-        :param stderr:path to stderr log file. with cmd_prefix only.
+        :type cmd_prefix: basestring, tuple
+        :param stdout: path to stdout log file.
+        :type stdout: str
+        :param stderr: path to stderr log file.
+        :type stderr: str
         """
         self.daemon_bin = daemon_bin
-        self.client = client
         self.pid_file = utils.PidFileObject(pid_file)
-        self.config_file = config_file
-        self.working_dir = working_dir or '.'
-        self.kwargs = kwargs
+        self.options = options
 
-        if cmd_prefix:
+        if isinstance(cmd_prefix, basestring):
             self.cmd_prefix = [c.strip() for c in cmd_prefix.split(' ')]
         else:
-            self.cmd_prefix = None
+            self.cmd_prefix = cmd_prefix
 
         self.process = None
 
         self.stdout = stdout
         self.stderr = stderr
 
-        self.begin()
-
-    def __del__(self):
-        self.finalize()
+        self.setup()
 
     @property
     def name(self):
@@ -161,8 +149,8 @@ class Daemon(_CallbackInterface):
         self.before_stop()
 
         utils.process_terminate_by_pid_file(self.pid_file)
-
         utils.safe_shot_down(self.process)
+
         self.process.wait()
 
         self.pid_file.remove()
