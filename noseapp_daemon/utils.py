@@ -13,7 +13,7 @@ from noseapp.utils.common import TimeoutException
 logger = logging.getLogger(__name__)
 
 
-def safe_shot_down(process, timeout=3.0, sleep=0.5):
+def safe_shot_down(process, timeout=3.0, sleep=0.1):
     """
     :type process: psutil.Popen
     """
