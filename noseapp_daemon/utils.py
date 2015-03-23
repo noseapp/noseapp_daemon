@@ -26,6 +26,7 @@ def safe_shot_down(process, timeout=3.0, sleep=0.1):
             pass
 
         process.terminate()
+        process.wait()
 
         try:
             waiting_for(

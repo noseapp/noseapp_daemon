@@ -151,8 +151,6 @@ class DaemonRunner(CallbackInterface):
         utils.process_terminate_by_pid_file(self.pid_file)
         utils.safe_shot_down(self.process)
 
-        self.process.wait()
-
         self.pid_file.remove()
 
         if self.stdout:
