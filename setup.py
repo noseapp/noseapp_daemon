@@ -4,7 +4,7 @@ from setuptools import setup
 from setuptools import find_packages
 
 
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 
 
 if __name__ == '__main__':
@@ -15,6 +15,7 @@ if __name__ == '__main__':
         packages=find_packages(),
         author='Mikhail Trifonov',
         author_email='mikhail.trifonov@corp.mail.ru',
+        license='GNU LGPL',
         description='noseapp extension for linux daemon testing',
         include_package_data=True,
         zip_safe=False,
