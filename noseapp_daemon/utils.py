@@ -6,8 +6,6 @@ import signal
 import logging
 
 import psutil
-from noseapp.utils.common import waiting_for
-from noseapp.utils.common import TimeoutException
 
 
 logger = logging.getLogger(__name__)
@@ -27,15 +25,6 @@ def safe_shot_down(process, timeout=3.0, sleep=0.1):
 
         process.terminate()
         process.wait()
-
-        try:
-            waiting_for(
-                process.poll,
-                sleep=sleep,
-                timeout=timeout,
-            )
-        except TimeoutException:
-            process.kill()
 
     except (psutil.NoSuchProcess, OSError):
         pass
