@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from subprocess import PIPE
 
 import psutil
 
