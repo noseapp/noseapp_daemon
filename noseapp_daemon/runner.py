@@ -125,29 +125,31 @@ class DaemonRunner(CallbackInterface):
         self.before_start()
 
         cmd = []
+
         if self.cmd_prefix:
             cmd.append(self.cmd_prefix)
+
         cmd += self.cmd
         cmd = ' '.join(cmd)
 
-        kwargs = self.process_options.copy()
+        process_options = self.process_options.copy()
 
         if self.stdout:
             self.stdout_f = open(self.stdout, 'a')
-            kwargs['stdout'] = self.stdout_f
+            process_options.update(stdout=self.stdout_f)
         else:
             self.stdout_f = None
 
         if self.stderr:
             self.stderr_f = open(self.stderr, 'a')
-            kwargs['stderr'] = self.stderr_f
+            process_options.update(stderr=self.stderr_f)
         else:
             self.stderr_f = None
 
-        kwargs['shell'] = True
+        process_options.update(shell=True)
 
-        logger.debug('{0} CMD={0} KWARGS={1}'.format(self.name, cmd, kwargs))
-        self.process = psutil.Popen(cmd, **kwargs)
+        logger.debug('Daemon "{}" cmd: "{}" process_options: {}'.format(self.name, cmd, process_options))
+        self.process = psutil.Popen(cmd, **process_options)
 
         self.after_start()
 
