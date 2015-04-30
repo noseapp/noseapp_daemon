@@ -81,11 +81,7 @@ class DaemonRunner(CallbackInterface):
         self.daemon_bin = daemon_bin
         self.pid_file = utils.PidFileObject(pid_file)
         self.options = options
-
-        if isinstance(cmd_prefix, basestring):
-            self.cmd_prefix = [c.strip() for c in cmd_prefix.split(' ')]
-        else:
-            self.cmd_prefix = cmd_prefix
+        self.cmd_prefix = cmd_prefix
 
         self.process = None
 
@@ -128,12 +124,30 @@ class DaemonRunner(CallbackInterface):
 
         self.before_start()
 
-        self.process = psutil.Popen(
-            self.cmd if not self.cmd_prefix else self.cmd_prefix + self.cmd,
-            stderr=PIPE,
-            stdout=PIPE,
-            **self.process_options
-        )
+        cmd = []
+        if self.cmd_prefix:
+            cmd.append(self.cmd_prefix)
+        cmd += self.cmd
+        cmd = ' '.join(cmd)
+
+        kwargs = self.process_options.copy()
+
+        if self.stdout:
+            self.stdout_f = open(self.stdout, 'a')
+            kwargs['stdout'] = self.stdout_f
+        else:
+            self.stdout_f = None
+
+        if self.stderr:
+            self.stderr_f = open(self.stderr, 'a')
+            kwargs['stderr'] = self.stderr_f
+        else:
+            self.stderr_f = None
+
+        kwargs['shell'] = True
+
+        logger.debug('{0} CMD={0} KWARGS={1}'.format(self.name, cmd, kwargs))
+        self.process = psutil.Popen(cmd, **kwargs)
 
         self.after_start()
 
@@ -153,15 +167,10 @@ class DaemonRunner(CallbackInterface):
 
         self.pid_file.remove()
 
-        if self.stdout:
-            with open(self.stdout, 'a') as stdout:
-                for line in self.process.stdout:
-                    stdout.write(line)
-
-        if self.stderr:
-            with open(self.stderr, 'a') as stderr:
-                for line in self.process.stderr:
-                    stderr.write(line)
+        if self.stdout_f:
+            self.stdout_f.close()
+        if self.stderr_f:
+            self.stderr_f.close()
 
         self.process = None
 
