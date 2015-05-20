@@ -55,6 +55,14 @@ class DaemonManagement(object):
 
         self.setup()
 
+    @property
+    def services(self):
+        return self.__services
+
+    @property
+    def daemons(self):
+        return self.__daemons
+
     def setup(self):
         pass
 
@@ -87,24 +95,24 @@ class DaemonManagement(object):
         return service
 
     @contextmanager
-    def checkout_service(self, name, ignore_exc=None, callback=None):
-        if isinstance(ignore_exc, tuple):
+    def checkout_service(self, name, except_exc=None, error_handler=None):
+        if isinstance(except_exc, tuple) or isinstance(except_exc, BaseException):
             try:
                 yield self.service(name)
-            except ignore_exc:
-                if callable(callback):
-                    callback()
+            except except_exc as e:
+                if callable(error_handler):
+                    error_handler(e)
         else:
             yield self.service(name)
 
     @contextmanager
-    def checkout_daemon(self, name, ignore_exc=None, callback=None):
-        if isinstance(ignore_exc, tuple):
+    def checkout_daemon(self, name, except_exc=None, error_handler=None):
+        if isinstance(except_exc, tuple) or isinstance(except_exc, BaseException):
             try:
                 yield self.daemon(name)
-            except ignore_exc:
-                if callable(callback):
-                    callback()
+            except except_exc as e:
+                if callable(error_handler):
+                    error_handler(e)
         else:
             yield self.daemon(name)
 
