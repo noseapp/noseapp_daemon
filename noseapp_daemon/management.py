@@ -7,11 +7,11 @@ from noseapp_daemon.runner import DaemonRunner
 from noseapp_daemon.service import DaemonService
 
 
-class ServiceNotFound(BaseException):
+class ServiceNotFound(LookupError):
     pass
 
 
-class DaemonNotFound(BaseException):
+class DaemonNotFound(LookupError):
     pass
 
 
@@ -32,8 +32,8 @@ class DaemonManagement(object):
 
       with management.checkout_daemon(
         'my_daemon',
-        ignore_exc=(ValueError,),
-        callback=lambda: None,  # if ValueError will be raised, this function can be called
+        except_exc=(ValueError,),
+        error_handler=lambda daemon, error: None,
       ) as my_daemon:
         my_daemon.start()
 
@@ -46,9 +46,10 @@ class DaemonManagement(object):
       ...
     """
 
-    def __init__(self, app=None, **options):
+    def __init__(self, app=None, options=None):
+        self.options = options
+
         self._app = app
-        self._options = options
 
         self.__daemons = OrderedDict()
         self.__services = OrderedDict()
@@ -68,13 +69,13 @@ class DaemonManagement(object):
 
     def add_service(self, service):
         if not isinstance(service, DaemonService):
-            raise TypeError('"service" param is not instance "DaemonService"')
+            raise TypeError('"service" param is not instance of "DaemonService"')
 
         self.__services[service.name] = service
 
     def add_daemon(self, daemon):
         if not isinstance(daemon, DaemonRunner):
-            raise TypeError('"daemon" param is not instance "DaemonRunner"')
+            raise TypeError('"daemon" param is not instance of "DaemonRunner"')
 
         self.__daemons[daemon.name] = daemon
 
@@ -96,25 +97,29 @@ class DaemonManagement(object):
 
     @contextmanager
     def checkout_service(self, name, except_exc=None, error_handler=None):
+        service = self.service(name)
+
         if isinstance(except_exc, tuple) or isinstance(except_exc, BaseException):
             try:
-                yield self.service(name)
+                yield service
             except except_exc as e:
                 if callable(error_handler):
-                    error_handler(e)
+                    error_handler(service, e)
         else:
-            yield self.service(name)
+            yield service
 
     @contextmanager
     def checkout_daemon(self, name, except_exc=None, error_handler=None):
+        daemon = self.daemon(name)
+
         if isinstance(except_exc, tuple) or isinstance(except_exc, BaseException):
             try:
-                yield self.daemon(name)
+                yield daemon
             except except_exc as e:
                 if callable(error_handler):
-                    error_handler(e)
+                    error_handler(daemon, e)
         else:
-            yield self.daemon(name)
+            yield daemon
 
     def start_services(self):
         for _, service in self.__services.items():

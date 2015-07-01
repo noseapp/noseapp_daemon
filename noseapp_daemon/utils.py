@@ -11,22 +11,30 @@ import psutil
 logger = logging.getLogger(__name__)
 
 
-def safe_shot_down(process):
+def safe_shot_down(process, recursive=True):
     """
     :type process: psutil.Popen
     """
+    if recursive:
+        children = (c for c in process.children(recursive=True))
+        for ch in children:
+            safe_shot_down(ch, recursive=False)
+
     try:
-
-        try:
-            children = (c for c in process.children(recursive=True))
-            map(safe_shot_down, children)
-        except AttributeError:
-            pass
-
         process.terminate()
         process.wait()
+    except (psutil.NoSuchProcess, OSError, AttributeError):
+        pass
 
-    except (psutil.NoSuchProcess, OSError):
+
+def kill_process_by_pid(pid):
+    """
+    :param pid: pid of process
+    :type pid: int
+    """
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError:
         pass
 
 
@@ -34,13 +42,8 @@ def process_terminate_by_pid_file(pid_file):
     """
     :type pid_file: PidFileObject
     """
-    if not pid_file.exist:
-        return
-
-    try:
-        os.kill(pid_file.pid, signal.SIGTERM)
-    except OSError:
-        pass
+    if pid_file.exist:
+        kill_process_by_pid(pid_file.pid)
 
 
 class PidFileObject(object):
@@ -87,3 +90,17 @@ class PidFileObject(object):
 
     def __repr__(self):
         return '<PidFile {}>'.format(self._file_path)
+
+
+def which(program_name, default=''):
+    is_bin = lambda p: os.path.isfile(p) and os.access(p, os.X_OK)
+
+    if is_bin(default):
+        return default
+
+    for path in os.environ['PATH'].split(os.pathsep):
+        bin_file = os.path.join(path, program_name)
+        if is_bin(bin_file):
+            return bin_file
+
+    return None

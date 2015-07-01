@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 import logging
 
 import psutil
@@ -10,53 +11,66 @@ from noseapp_daemon import utils
 logger = logging.getLogger(__name__)
 
 
-class CallbackInterface(object):
+def compile_cmd(
+        cmd_prefix=None,
+        daemon_bin=None,
+        cmd_options=None,
+        client_cmd=None):
     """
-    Callback methods for daemon management
+    Create cmd string for running
+    """
+    if client_cmd:
+        cmd = client_cmd
+    else:
+        cmd = (cmd_prefix, daemon_bin, cmd_options.to_string())
+
+    if isinstance(cmd, (list, tuple)):
+        cmd = ' '.join(str(c) for c in cmd if c).strip()
+
+    return cmd
+
+
+class DaemonError(BaseException):
+    pass
+
+
+class CmdArgs(object):
+    """
+    Command line options for running daemon
     """
 
-    @property
-    def process_options(self):
-        """
-        Arguments for Popen __init__ method
-        """
-        return {}
+    def __init__(self):
+        self._options = {}
 
-    def setup(self):
-        """
-        Be called after initialization
-        """
-        pass
+    def add_option(self, opt, value=None):
+        self._options[opt] = value
 
-    def before_start(self):
-        """
-        Pre start callback
-        """
-        pass
+    def get_option(self, opt, default=None):
+        return self._options.get(opt, default)
 
-    def after_start(self):
-        """
-        Post start callback
-        """
-        pass
+    def to_string(self):
+        string = ''
 
-    def before_stop(self):
-        """
-        Pre stop callback
-        """
-        pass
+        for opt, value in self._options.items():
+            if value is None or type(value) is bool:
+                string += '{} '.format(opt)
+            else:
+                string += '{}={} '.format(opt, value)
 
-    def after_stop(self):
-        """
-        Post stop callback
-        """
-        pass
+        return string.strip()
+
+    def __repr__(self):
+        return repr(self._options)
 
 
-class DaemonRunner(CallbackInterface):
+class DaemonRunner(object):
     """
     Base class for daemon run
     """
+
+    DAEMON_BIN = None
+
+    config_class = None
 
     def __init__(self,
                  daemon_bin=None,
@@ -64,7 +78,8 @@ class DaemonRunner(CallbackInterface):
                  stderr=None,
                  pid_file=None,
                  cmd_prefix=None,
-                 **options):
+                 options=None,
+                 **kwargs):
         """
         :param daemon_bin: path to executable file
         :type daemon_bin: str
@@ -76,30 +91,59 @@ class DaemonRunner(CallbackInterface):
         :type stdout: str
         :param stderr: path to stderr log file.
         :type stderr: str
+        :param options: will be using like options property
         """
-        self.daemon_bin = daemon_bin
-        self.pid_file = utils.PidFileObject(pid_file)
         self.options = options
+        self.cmd_args = CmdArgs()
         self.cmd_prefix = cmd_prefix
+        self.pid_file = utils.PidFileObject(pid_file)
+        self.daemon_bin = daemon_bin or self.DAEMON_BIN
 
+        self.config = None
         self.process = None
 
         self.stdout = stdout
         self.stderr = stderr
 
+        if self.config_class:
+            self.config = self.config_class(self)
+
         self.setup()
 
-    @property
+        if not isinstance(self.daemon_bin, basestring) or not os.path.exists(self.daemon_bin):
+            raise DaemonError(
+                '"{}" bin file is not found'.format(self.name),
+            )
+
     def name(self):
+        """
+        Name of daemon
+        """
         raise NotImplementedError(
             'Property "name" should be implemented in subclasses.',
         )
 
+    def setup(self):
+        """
+        Will be called after initialization
+        """
+        pass
+
     @property
     def cmd(self):
-        raise NotImplementedError(
-            'Property "cmd" should be implemented in subclasses.',
-        )
+        """
+        Define your own command line
+
+        :return: list, tuple, str
+        """
+        return None
+
+    @property
+    def process_options(self):
+        """
+        Arguments for Popen __init__ method
+        """
+        return {}
 
     @property
     def started(self):
@@ -109,12 +153,64 @@ class DaemonRunner(CallbackInterface):
     def stopped(self):
         return not self.started
 
+    def before_start(self):
+        """
+        Pre start callback
+        """
+        if hasattr(self.config, 'before_start'):
+            self.config.before_start()
+
+    def after_start(self):
+        """
+        Post start callback
+        """
+        if hasattr(self.config, 'after_start'):
+            self.config.after_start()
+
+    def before_stop(self):
+        """
+        Pre stop callback
+        """
+        if hasattr(self.config, 'before_stop'):
+            self.config.before_stop()
+
+    def after_stop(self):
+        """
+        Post stop callback
+        """
+        if hasattr(self.config, 'after_stop'):
+            self.config.after_stop()
+
+    def get_cmd(self):
+        """
+        Get string of running
+        """
+        return compile_cmd(
+            client_cmd=self.cmd,
+            cmd_prefix=self.cmd_prefix,
+            daemon_bin=self.daemon_bin,
+            cmd_options=self.cmd_args,
+        )
+
+    def add_cmd_option(self, opt, value=None):
+        """
+        Add option to cmd
+        """
+        self.cmd_args.add_option(opt, value=value)
+
+    def get_cmd_option(self, opt, default=None):
+        """
+        Get cmd option
+        """
+        return self.cmd_args.get_option(opt, default=default)
+
     def start(self):
         """
         Start daemon
         """
         if not self.process and self.pid_file.exist:
             self.pid_file.remove()
+            logger.warning('Old pid file "%s" was removed', self.pid_file.path)
 
         if self.started:
             return
@@ -123,31 +219,21 @@ class DaemonRunner(CallbackInterface):
 
         self.before_start()
 
-        cmd = []
-
-        if self.cmd_prefix:
-            cmd.append(self.cmd_prefix)
-
-        cmd += self.cmd
-        cmd = ' '.join(cmd)
-
+        cmd = self.get_cmd()
         process_options = self.process_options.copy()
 
         if self.stdout:
-            self.stdout_f = open(self.stdout, 'a')
-            process_options.update(stdout=self.stdout_f)
-        else:
-            self.stdout_f = None
-
+            process_options.update(stdout=open(self.stdout, 'a'))
         if self.stderr:
-            self.stderr_f = open(self.stderr, 'a')
-            process_options.update(stderr=self.stderr_f)
-        else:
-            self.stderr_f = None
+            process_options.update(stderr=open(self.stderr, 'a'))
 
         process_options.update(shell=True)
 
-        logger.debug('Daemon "{}" cmd: "{}" process_options: {}'.format(self.name, cmd, process_options))
+        logger.debug(
+            'Daemon "{}" cmd: "{}" process_options: {}'.format(
+                self.name, cmd, process_options,
+            ),
+        )
         self.process = psutil.Popen(cmd, **process_options)
 
         self.after_start()
@@ -167,11 +253,6 @@ class DaemonRunner(CallbackInterface):
         utils.safe_shot_down(self.process)
 
         self.pid_file.remove()
-
-        if self.stdout_f:
-            self.stdout_f.close()
-        if self.stderr_f:
-            self.stderr_f.close()
 
         self.process = None
 

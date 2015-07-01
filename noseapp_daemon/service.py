@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import abc
+
 
 class DaemonService(object):
     """
@@ -19,31 +21,30 @@ class DaemonService(object):
           self._daemon.start()
     """
 
-    def __init__(self, config=None, **options):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, config=None, options=None):
+        self.options = options
+
         self._config = config
-        self._options = options
 
         self.setup()
 
-    def setup(self):
+    @abc.abstractproperty
+    def name(self):
         pass
 
-    @property
-    def name(self):
-        raise NotImplementedError(
-            'Property "name" should be implemented in subclasses.',
-        )
-
+    @abc.abstractmethod
     def start(self):
-        raise NotImplementedError(
-            'Method "start" should be implemented in subclasses.',
-        )
+        pass
 
+    @abc.abstractmethod
     def stop(self):
-        raise NotImplementedError(
-            'Method "stop" should be implemented in subclasses.',
-        )
+        pass
 
     def restart(self):
         self.stop()
         self.start()
+
+    def setup(self):
+        pass
