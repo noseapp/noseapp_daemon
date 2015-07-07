@@ -3,7 +3,10 @@
 import os
 import errno
 import signal
+import socket
 import logging
+from random import Random
+from collections import Iterator
 
 import psutil
 
@@ -92,15 +95,77 @@ class PidFileObject(object):
         return '<PidFile {}>'.format(self._file_path)
 
 
-def which(program_name, default=''):
+def which(command, default=''):
+    """
+    Get full path to bin file by command name
+    """
     is_bin = lambda p: os.path.isfile(p) and os.access(p, os.X_OK)
 
     if is_bin(default):
         return default
 
     for path in os.environ['PATH'].split(os.pathsep):
-        bin_file = os.path.join(path, program_name)
+        bin_file = os.path.join(path, command)
         if is_bin(bin_file):
             return bin_file
 
     return None
+
+
+def port_is_free(port):
+    """
+    Check port at freedom
+    """
+    localhost = '127.0.0.1'
+
+    sock = socket.socket(
+        socket.AF_INET,
+        socket.SOCK_STREAM,
+    )
+    result = sock.connect_ex(
+        (localhost, port),
+    )
+    sock.close()
+
+    return bool(result)
+
+
+class RandomizePort(Iterator):
+    """
+    To get randomize port.
+
+    Usage:
+        port = RandomizePort.get()
+    """
+
+    memo = set()
+    random = None
+
+    MIN_PORT = 61001
+    MAX_PORT = 65535
+    MAX_PORTS = (MAX_PORT - MIN_PORT) / 30
+
+    def __init__(self):
+        if not self.random:
+            self.random = Random()
+        self.__port = self.random.randint(self.MIN_PORT, self.MAX_PORT)
+
+    @classmethod
+    def init_sid(cls, sid):
+        cls.random = Random(sid)
+
+    def next(self):
+        while self.__port in self.memo and not port_is_free(self.__port):
+
+            if len(self.memo) >= self.MAX_PORTS:
+                raise StopIteration
+
+            self.__port = self.random.randint(self.MIN_PORT, self.MAX_PORT)
+
+        self.memo.add(self.__port)
+
+        return self.__port
+
+    @classmethod
+    def get(cls):
+        return cls().next()

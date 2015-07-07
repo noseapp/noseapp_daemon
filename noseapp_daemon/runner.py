@@ -2,6 +2,7 @@
 
 import os
 import logging
+from collections import OrderedDict
 
 import psutil
 
@@ -40,7 +41,7 @@ class CmdArgs(object):
     """
 
     def __init__(self):
-        self._options = {}
+        self._options = OrderedDict()
 
     def add_option(self, opt, value=None):
         self._options[opt] = value
@@ -78,8 +79,7 @@ class DaemonRunner(object):
                  stderr=None,
                  pid_file=None,
                  cmd_prefix=None,
-                 options=None,
-                 **kwargs):
+                 options=None):
         """
         :param daemon_bin: path to executable file
         :type daemon_bin: str
@@ -204,7 +204,7 @@ class DaemonRunner(object):
         """
         return self.cmd_args.get_option(opt, default=default)
 
-    def start(self):
+    def start(self, **kwargs):
         """
         Start daemon
         """
@@ -226,6 +226,8 @@ class DaemonRunner(object):
             process_options.update(stdout=open(self.stdout, 'a'))
         if self.stderr:
             process_options.update(stderr=open(self.stderr, 'a'))
+        if kwargs:
+            process_options.update(kwargs)
 
         process_options.update(shell=True)
 
@@ -250,7 +252,7 @@ class DaemonRunner(object):
         self.before_stop()
 
         utils.process_terminate_by_pid_file(self.pid_file)
-        utils.safe_shot_down(self.process)
+        utils.safe_shot_down(self.process, recursive=True)
 
         self.pid_file.remove()
 
