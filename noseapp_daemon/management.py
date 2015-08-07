@@ -49,6 +49,17 @@ class DaemonManagement(object):
     def setup(self):
         pass
 
+    def install(self, app):
+        """
+        Shared services and daemons to suites
+
+        :type app: noseapp.app.NoseApp
+        """
+        for name, service in self.__services.items():
+            app.shared_extension(name=name, cls=self.service, args=(name,))
+        for name, daemon in self.__daemons.items():
+            app.shared_extension(name=name, cls=self.daemon, args=(name,))
+
     def add_service(self, service):
         if not isinstance(service, DaemonService):
             raise TypeError('"service" param is not instance of "DaemonService"')

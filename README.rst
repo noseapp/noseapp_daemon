@@ -108,7 +108,11 @@ Create Management
 
   management.add_service(MyDaemonService())
   service = management.service('my_service')
-  ...
+
+  # to install as extension
+  management.install(app)
+
+  suite = Suite(__name__, require=['my_daemon'])
 
   # management.stop_all()
   # management.stop_daemons()
