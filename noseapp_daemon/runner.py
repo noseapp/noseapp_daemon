@@ -313,3 +313,10 @@ class DaemonRunner(object):
         self.process = None
 
         self.after_stop()
+
+    def restart(self):
+        """
+        Restart daemon
+        """
+        self.stop()
+        self.start()
