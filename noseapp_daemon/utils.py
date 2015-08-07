@@ -114,7 +114,7 @@ def which(command, default=''):
 
 def port_is_free(port):
     """
-    Check port at freedom
+    Check port is freedom
     """
     localhost = '127.0.0.1'
 

@@ -8,100 +8,132 @@ Installation
   pip install noseapp_daemon
 
 
-====
-Why?
-====
+=============
+Create Runner
+=============
 
-I testing linux daemon with noseapp lib and i wont have ability control for daemon running, prepare... something else...
+::
 
+  from noseapp.ext.daemon import DaemonRunner
 
-====
-How?
-====
+  class MyPythonDaemon(DaemonRunner):
 
-Create Runner::
-
-  from noseapp.ext.daemon import Daemon
-
-  class MyDaemon(Daemon):
-
-    name = 'my_daemon'
-
-    @property
-    def cmd(self):
-      return [
-        self.daemon_bin,
-        '--config',
-        self.options['config_file'],
-      ]
-
-    def before_start(self):
-      # do something...
-      # see another callbacks
+      CMD_PREFIX = 'python'
+      DAEMON_BIN = '/path/to/daemon/daemon.py'
 
 
-  my_daemon = MyDaemon('path/to/my_daemon/bin', config_file='path/to/config/file')
+  my_daemon = MyPythonDaemon('my_daemon')
+  my_daemon.add_cmd_option('-c', '/path/to/config')
   my_daemon.start()
 
 
-Create Service::
+====================
+Create daemon plugin
+====================
+
+::
+
+  from noseapp.ext.daemon import DaemonPlugin
+
+
+  class MyPythonDaemonPlugin(DaemonPlugin):
+
+      def init(self, daemon):
+          # do something
+
+      def before_start(self, daemon):
+          # do something
+
+      def after_start(self, daemon):
+          # do something
+
+      def before_stop(self, daemon):
+          # do something
+
+      def after_stop(self, daemon):
+          # do something
+
+
+  my_daemon = MyPythonDaemon('my_daemon', plugin=MyPythonDaemonPlugin())
+
+
+==============
+Create Service
+==============
+
+::
 
   from noseapp.ext.daemon import DaemonService
 
   class MyDaemonService(DaemonService):
 
-    name = 'my_daemon_service'
+    name = 'my_service'
 
     def setup(self):
-      self.prepare_db()
-      self._my_daemon = MyDaemon(
-        self._config.MY_DAEMON_BIN,
-        config_file=self._config.MY_DAEMON_CONFIG_PATH,
-      )
-
-    def prepare_db(self):
-      self._options['db'] ...
+        self.daemon = MyPythonDaemon('my_daemon')
 
     def start(self):
-      self._my_daemon.start()
+        self.daemon.start()
+
+    def stop(self):
+        self.daemon.stop()
 
     ...
 
 
-Create Management::
+  service = MyDaemonService()
+  service.start()
+  service.restart()
+
+
+=================
+Create Management
+=================
+
+::
 
   from noseapp.ext.daemon import DaemonManagement
 
-  class MyDaemonManagement(DaemonManagement):
+  management = DaemonManagement(app)
+  management.add_daemon(
+      MyPythonDaemon('my_daemon', plugin=MyPythonDaemonPlugin()),
+  )
+  daemon = management.daemon('my_daemon')
 
-    def setup(self):
-        self.add_daemon(
-          MyDaemon(
-            self._app.config.MY_DAEMON_BIN,
-            config_file=self._app.config.MY_DAEMON_CONFIG_PATH,
-          ),
-        )
+  def error_handler(daemon, e):
+      # do something
 
-        self.add_service(
-          MyDaemonService(self._app.config, db=DBClient(...)),
-        )
+  with management.checkout_daemon('my_daemon', except_exc=Exception, error_handler=error_handler) as daemon:
+      daemon.restart()
 
-     ...
-
-  management = MyDaemonManagement(app)
-  management.start_all()
-
-  with management.checkout_daemon(
-    'my_daemon',
-    ignore_exc=(TypeError,),
-    callback=lambda: None,  # if ValueError will be raise, this function can be called
-  ) as my_daemon:
-    my_daemon.stop()
-
-  management.service('my_daemon_service').stop()
+  management.add_service(MyDaemonService())
+  service = management.service('my_service')
+  ...
 
   # management.stop_all()
   # management.stop_daemons()
   # management.stop_services()
   # management.restart_all()
   # etc ...
+
+
+=======
+Presets
+=======
+
+::
+
+  noseapp.ext.daemon.presets import NGINXDaemon
+  noseapp.ext.daemon.presets import UWSGIDaemon
+  ...
+
+
+  nginx = NGINXDaemon()
+  uwsgi = UWSGIDaemon()
+
+  nginx.add_cmd_option('-c', '/path/to/config')
+  uwsgi.add_dmd_option('--ini', '/path/to/config')
+
+  nginx.start()
+  uwsgi.start()
+  ...

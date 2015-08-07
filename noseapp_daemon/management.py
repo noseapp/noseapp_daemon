@@ -17,44 +17,26 @@ class DaemonNotFound(LookupError):
 
 class DaemonManagement(object):
     """
-    Interface for daemons and services control
-
-    Example::
-
-      class MyDaemonManagement(DaemonManagement):
-
-        def setup(self):
-          # do something...
-
-      management = MyDaemonManagement(app)
-      management.add_daemon(daemon)
-      ...
-
-      with management.checkout_daemon(
-        'my_daemon',
-        except_exc=(ValueError,),
-        error_handler=lambda daemon, error: None,
-      ) as my_daemon:
-        my_daemon.start()
-
-      management.service('my_service').start()
-
-      management.stop_all()
-
-      management.start_all()
-      management.stop_daemons()
-      ...
+    Class implemented interface
+    for daemons and services control
     """
 
     def __init__(self, app=None, options=None):
-        self.options = options
-
-        self._app = app
+        self.__app = app
+        self.__options = options
 
         self.__daemons = OrderedDict()
         self.__services = OrderedDict()
 
         self.setup()
+
+    @property
+    def app(self):
+        return self.__app
+
+    @property
+    def options(self):
+        return self.__options
 
     @property
     def services(self):
@@ -122,24 +104,24 @@ class DaemonManagement(object):
             yield daemon
 
     def start_services(self):
-        for _, service in self.__services.items():
-            service.start()
+        for name in self.__services:
+            self.__services[name].start()
 
     def stop_services(self):
-        for _, service in self.__services.items():
-            service.stop()
+        for name in self.__services:
+            self.__services[name].stop()
 
     def restart_services(self):
         self.stop_services()
         self.start_services()
 
     def start_daemons(self):
-        for _, daemon in self.__daemons.items():
-            daemon.start()
+        for name in self.__daemons:
+            self.__daemons[name].start()
 
     def stop_daemons(self):
-        for _, daemon in self.__daemons.items():
-            daemon.stop()
+        for name in self.__daemons:
+            self.__daemons[name].stop()
 
     def restart_daemons(self):
         self.stop_daemons()

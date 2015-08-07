@@ -64,21 +64,61 @@ class CmdArgs(object):
         return repr(self._options)
 
 
+class DaemonPlugin(object):
+    """
+    Class implemented callback
+    interface for setup end run daemon
+    """
+
+    def init(self, daemon):
+        """
+        Will be called at DaemonRunner.__init__
+        """
+        pass
+
+    def before_start(self, daemon):
+        """
+        Will be called before start daemon
+        """
+        pass
+
+    def after_start(self, daemon):
+        """
+        Will be called after start daemon
+        """
+        pass
+
+    def before_stop(self, daemon):
+        """
+        Will be called before stop daemon
+        """
+        pass
+
+    def after_stop(self, daemon):
+        """
+        Will be called after stop daemon
+        """
+        pass
+
+
 class DaemonRunner(object):
     """
     Base class for daemon run
     """
 
+    CMD_PREFIX = None
     DAEMON_BIN = None
 
-    config_class = None
+    plugin_class = DaemonPlugin
 
     def __init__(self,
+                 name=None,
                  daemon_bin=None,
                  stdout=None,
                  stderr=None,
                  pid_file=None,
                  cmd_prefix=None,
+                 plugin=None,
                  options=None):
         """
         :param daemon_bin: path to executable file
@@ -91,48 +131,45 @@ class DaemonRunner(object):
         :type stdout: str
         :param stderr: path to stderr log file.
         :type stderr: str
-        :param options: will be using like options property
+        :param options: will be use as options property
         """
+        self._name = name
+
         self.options = options
         self.cmd_args = CmdArgs()
-        self.cmd_prefix = cmd_prefix
         self.pid_file = utils.PidFileObject(pid_file)
+        self.cmd_prefix = cmd_prefix or self.CMD_PREFIX
         self.daemon_bin = daemon_bin or self.DAEMON_BIN
 
-        self.config = None
         self.process = None
 
         self.stdout = stdout
         self.stderr = stderr
 
-        if self.config_class:
-            self.config = self.config_class(self)
+        self.plugin = plugin if plugin else self.plugin_class()
 
-        self.setup()
+        if hasattr(self.plugin, 'init'):
+            self.plugin.init(self)
 
         if not isinstance(self.daemon_bin, basestring) or not os.path.exists(self.daemon_bin):
             raise DaemonError(
                 '"{}" bin file is not found'.format(self.name),
             )
 
+    @property
     def name(self):
         """
-        Name of daemon
+        Name of daemon.
         """
-        raise NotImplementedError(
-            'Property "name" should be implemented in subclasses.',
-        )
+        if not self._name:
+            raise DaemonError('Daemon name is required param')
 
-    def setup(self):
-        """
-        Will be called after initialization
-        """
-        pass
+        return self._name
 
     @property
     def cmd(self):
         """
-        Define your own command line
+        Define your own command line.
 
         :return: list, tuple, str
         """
@@ -141,7 +178,7 @@ class DaemonRunner(object):
     @property
     def process_options(self):
         """
-        Arguments for Popen __init__ method
+        Arguments for Popen __init__ method.
         """
         return {}
 
@@ -153,37 +190,50 @@ class DaemonRunner(object):
     def stopped(self):
         return not self.started
 
+    @property
+    def is_dead(self):
+        """
+        To return True if process is dead else False.
+        """
+        try:
+            return self.process.status() in (
+                psutil.STATUS_DEAD,
+                psutil.STATUS_ZOMBIE,
+            )
+        except (psutil.NoSuchProcess, AttributeError):
+            return True
+
     def before_start(self):
         """
-        Pre start callback
+        Pre start callback.
         """
-        if hasattr(self.config, 'before_start'):
-            self.config.before_start()
+        if hasattr(self.plugin, 'before_start'):
+            self.plugin.before_start(self)
 
     def after_start(self):
         """
-        Post start callback
+        Post start callback.
         """
-        if hasattr(self.config, 'after_start'):
-            self.config.after_start()
+        if hasattr(self.plugin, 'after_start'):
+            self.plugin.after_start(self)
 
     def before_stop(self):
         """
-        Pre stop callback
+        Pre stop callback.
         """
-        if hasattr(self.config, 'before_stop'):
-            self.config.before_stop()
+        if hasattr(self.plugin, 'before_stop'):
+            self.plugin.before_stop(self)
 
     def after_stop(self):
         """
-        Post stop callback
+        Post stop callback.
         """
-        if hasattr(self.config, 'after_stop'):
-            self.config.after_stop()
+        if hasattr(self.plugin, 'after_stop'):
+            self.plugin.after_stop(self)
 
     def get_cmd(self):
         """
-        Get string of running
+        To get cmd string for run.
         """
         return compile_cmd(
             client_cmd=self.cmd,
@@ -194,19 +244,21 @@ class DaemonRunner(object):
 
     def add_cmd_option(self, opt, value=None):
         """
-        Add option to cmd
+        Add option to cmd.
         """
         self.cmd_args.add_option(opt, value=value)
 
     def get_cmd_option(self, opt, default=None):
         """
-        Get cmd option
+        To get cmd option.
         """
         return self.cmd_args.get_option(opt, default=default)
 
     def start(self, **kwargs):
         """
-        Start daemon
+        Start daemon.
+
+        :param kwargs: subprocess.Popen kwargs
         """
         if not self.process and self.pid_file.exist:
             self.pid_file.remove()
@@ -240,9 +292,11 @@ class DaemonRunner(object):
 
         self.after_start()
 
-    def stop(self):
+    def stop(self, recursive=True):
         """
-        Stop daemon
+        Stop daemon.
+
+        :param recursive: if True then to stop children of process
         """
         if self.stopped:
             return
@@ -252,7 +306,7 @@ class DaemonRunner(object):
         self.before_stop()
 
         utils.process_terminate_by_pid_file(self.pid_file)
-        utils.safe_shot_down(self.process, recursive=True)
+        utils.safe_shot_down(self.process, recursive=recursive)
 
         self.pid_file.remove()
 

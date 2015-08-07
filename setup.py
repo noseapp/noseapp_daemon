@@ -24,6 +24,7 @@ if __name__ == '__main__':
             'noseapp',
             'psutil==2.2.1',
         ],
+        test_suite='tests',
         classifiers=[
             'Development Status :: 4 - Beta',
             'Intended Audience :: Developers',
