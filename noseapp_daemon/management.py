@@ -7,53 +7,36 @@ from noseapp_daemon.runner import DaemonRunner
 from noseapp_daemon.service import DaemonService
 
 
-class ServiceNotFound(BaseException):
+class ServiceNotFound(LookupError):
     pass
 
 
-class DaemonNotFound(BaseException):
+class DaemonNotFound(LookupError):
     pass
 
 
 class DaemonManagement(object):
     """
-    Interface for daemons and services control
-
-    Example::
-
-      class MyDaemonManagement(DaemonManagement):
-
-        def setup(self):
-          # do something...
-
-      management = MyDaemonManagement(app)
-      management.add_daemon(daemon)
-      ...
-
-      with management.checkout_daemon(
-        'my_daemon',
-        ignore_exc=(ValueError,),
-        callback=lambda: None,  # if ValueError will be raised, this function can be called
-      ) as my_daemon:
-        my_daemon.start()
-
-      management.service('my_service').start()
-
-      management.stop_all()
-
-      management.start_all()
-      management.stop_daemons()
-      ...
+    Class implemented interface
+    for daemons and services control
     """
 
-    def __init__(self, app=None, **options):
-        self._app = app
-        self._options = options
+    def __init__(self, app=None, options=None):
+        self.__app = app
+        self.__options = options
 
         self.__daemons = OrderedDict()
         self.__services = OrderedDict()
 
         self.setup()
+
+    @property
+    def app(self):
+        return self.__app
+
+    @property
+    def options(self):
+        return self.__options
 
     @property
     def services(self):
@@ -68,13 +51,13 @@ class DaemonManagement(object):
 
     def add_service(self, service):
         if not isinstance(service, DaemonService):
-            raise TypeError('"service" param is not instance "DaemonService"')
+            raise TypeError('"service" param is not instance of "DaemonService"')
 
         self.__services[service.name] = service
 
     def add_daemon(self, daemon):
         if not isinstance(daemon, DaemonRunner):
-            raise TypeError('"daemon" param is not instance "DaemonRunner"')
+            raise TypeError('"daemon" param is not instance of "DaemonRunner"')
 
         self.__daemons[daemon.name] = daemon
 
@@ -96,45 +79,49 @@ class DaemonManagement(object):
 
     @contextmanager
     def checkout_service(self, name, except_exc=None, error_handler=None):
+        service = self.service(name)
+
         if isinstance(except_exc, tuple) or isinstance(except_exc, BaseException):
             try:
-                yield self.service(name)
+                yield service
             except except_exc as e:
                 if callable(error_handler):
-                    error_handler(e)
+                    error_handler(service, e)
         else:
-            yield self.service(name)
+            yield service
 
     @contextmanager
     def checkout_daemon(self, name, except_exc=None, error_handler=None):
+        daemon = self.daemon(name)
+
         if isinstance(except_exc, tuple) or isinstance(except_exc, BaseException):
             try:
-                yield self.daemon(name)
+                yield daemon
             except except_exc as e:
                 if callable(error_handler):
-                    error_handler(e)
+                    error_handler(daemon, e)
         else:
-            yield self.daemon(name)
+            yield daemon
 
     def start_services(self):
-        for _, service in self.__services.items():
-            service.start()
+        for name in self.__services:
+            self.__services[name].start()
 
     def stop_services(self):
-        for _, service in self.__services.items():
-            service.stop()
+        for name in self.__services:
+            self.__services[name].stop()
 
     def restart_services(self):
         self.stop_services()
         self.start_services()
 
     def start_daemons(self):
-        for _, daemon in self.__daemons.items():
-            daemon.start()
+        for name in self.__daemons:
+            self.__daemons[name].start()
 
     def stop_daemons(self):
-        for _, daemon in self.__daemons.items():
-            daemon.stop()
+        for name in self.__daemons:
+            self.__daemons[name].stop()
 
     def restart_daemons(self):
         self.stop_daemons()

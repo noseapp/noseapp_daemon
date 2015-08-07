@@ -1,49 +1,47 @@
 # -*- coding: utf-8 -*-
 
+import abc
+
 
 class DaemonService(object):
     """
-    Abstract layer for daemon run logic realization
-
-    Example::
-
-      class MyDaemonService(DaemonService):
-
-        def setup(self):
-          self._daemon = MyDaemon(self._config...)
-          # do something...
-
-        # your interface for daemon management here
-
-        def start():
-          self._daemon.start()
+    Abstract layer for daemon run logic implementation
     """
 
-    def __init__(self, config=None, **options):
-        self._config = config
-        self._options = options
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, config=None, options=None):
+        self.__options = options
+        self.__config = config
+
+        self.daemon = None
 
         self.setup()
 
-    def setup(self):
-        pass
+    @property
+    def config(self):
+        return self.__config
 
     @property
-    def name(self):
-        raise NotImplementedError(
-            'Property "name" should be implemented in subclasses.',
-        )
-
-    def start(self):
-        raise NotImplementedError(
-            'Method "start" should be implemented in subclasses.',
-        )
-
-    def stop(self):
-        raise NotImplementedError(
-            'Method "stop" should be implemented in subclasses.',
-        )
+    def options(self):
+        return self.__options
 
     def restart(self):
         self.stop()
         self.start()
+
+    @abc.abstractproperty
+    def name(self):
+        pass
+
+    @abc.abstractmethod
+    def start(self):
+        pass
+
+    @abc.abstractmethod
+    def stop(self):
+        pass
+
+    @abc.abstractmethod
+    def setup(self):
+        pass
