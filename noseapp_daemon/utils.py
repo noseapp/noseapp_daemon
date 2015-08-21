@@ -7,6 +7,7 @@ import socket
 import logging
 from random import Random
 from collections import Iterator
+from contextlib import contextmanager
 
 import psutil
 
@@ -128,6 +129,22 @@ def port_is_free(port):
     sock.close()
 
     return bool(result)
+
+
+@contextmanager
+def cd(new_path):
+    """
+    Change directory
+
+    :param new_path: path to change
+    """
+    original_cwd = os.getcwd()
+    os.chdir(new_path)
+
+    try:
+        yield
+    finally:
+        os.chdir(original_cwd)
 
 
 class RandomizePort(Iterator):

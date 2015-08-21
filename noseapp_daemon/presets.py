@@ -57,14 +57,15 @@ class TarantoolDaemon(DaemonRunner):
         return self.DEFAULT_NAME
 
     @staticmethod
-    def remove_snapshots():
+    def remove_snapshots(cwd=os.getcwd()):
         logger.debug('Remove tarantool snapshots')
 
-        for filename in glob.iglob('*.snap'):
-            os.unlink(filename)
+        with utils.cd(cwd):
+            for filename in glob.iglob('*.snap'):
+                os.unlink(filename)
 
-        for filename in glob.iglob('*.xlog'):
-            os.unlink(filename)
+            for filename in glob.iglob('*.xlog'):
+                os.unlink(filename)
 
     def init_storage(self, **kwargs):
         logger.debug('Init tarantool storage')

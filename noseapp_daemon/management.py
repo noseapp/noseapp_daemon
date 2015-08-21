@@ -49,12 +49,14 @@ class DaemonManagement(object):
     def setup(self):
         pass
 
-    def install(self, app):
+    def install(self, app=None):
         """
         Shared services and daemons to suites
 
         :type app: noseapp.app.NoseApp
         """
+        app = app or self.__app
+
         for name, service in self.__services.items():
             app.shared_extension(name=name, cls=self.service, args=(name,))
         for name, daemon in self.__daemons.items():
