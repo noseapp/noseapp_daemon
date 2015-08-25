@@ -5,6 +5,7 @@ import errno
 import signal
 import socket
 import logging
+import resource
 from random import Random
 from collections import Iterator
 from contextlib import contextmanager
@@ -186,3 +187,15 @@ class RandomizePort(Iterator):
     @classmethod
     def get(cls):
         return cls().next()
+
+
+def set_ulimit_c(soft=None, hard=None):
+    """
+    Use for preexec_fn param of subprocess.Popen
+    """
+    if not soft:
+        soft = resource.RLIM_INFINITY
+    if not hard:
+        hard = resource.RLIM_INFINITY
+
+    resource.setrlimit(resource.RLIMIT_CORE, (soft, hard))
