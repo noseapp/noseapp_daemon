@@ -22,7 +22,7 @@ if __name__ == '__main__':
         platforms='linux',
         install_requires=[
             'noseapp',
-            'psutil==2.2.1',
+            'psutil==5.6.6',
         ],
         test_suite='tests',
         classifiers=[
